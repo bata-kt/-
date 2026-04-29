@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <title>Бағалау Транспортирі — Premium</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Montserrat:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-dark: #05060f; --bg-panel: rgba(20, 22, 45, 0.8); --neon-cyan: #00f2ff; --neon-pink: #ff00ff; --neon-green: #39ff14; }
+        body { background-color: var(--bg-dark); background-image: radial-gradient(circle at 20% 30%, rgba(0, 242, 255, 0.1) 0%, transparent 40%), radial-gradient(circle at 80% 70%, rgba(255, 0, 255, 0.1) 0%, transparent 40%); color: white; font-family: 'Montserrat', sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        #login-screen { text-align: center; background: var(--bg-panel); padding: 50px; border-radius: 30px; backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); width: 380px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        input { background: rgba(0, 0, 0, 0.5); border: 1px solid var(--neon-cyan); padding: 15px; color: white; border-radius: 12px; width: 100%; box-sizing: border-box; font-size: 1.1rem; margin-bottom: 20px; outline: none; }
+        .btn-start { background: var(--neon-cyan); color: #000; border: none; padding: 15px; border-radius: 12px; width: 100%; font-weight: 900; font-family: 'Orbitron'; cursor: pointer; text-transform: uppercase; }
+        #main-dashboard { display: none; width: 95%; max-width: 1100px; gap: 25px; justify-content: center; }
+        .left-side { flex: 2; background: var(--bg-panel); border-radius: 30px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); }
+        .protractor { position: relative; width: 450px; height: 225px; margin: 50px auto 20px; }
+        .needle { position: absolute; bottom: 0; left: 50%; width: 5px; height: 210px; background: #fff; transform-origin: bottom center; transform: translateX(-50%) rotate(-90deg); transition: 1s cubic-bezier(0.19, 1, 0.22, 1); border-radius: 10px; z-index: 5; }
+        .node { position: absolute; width: 46px; height: 46px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 900; font-family: 'Orbitron'; cursor: pointer; border: 2px solid; background: rgba(0,0,0,0.6); z-index: 10; transition: 0.3s; }
+        .node.disabled { opacity: 0.2; pointer-events: none; }
+        .node.selected { transform: scale(1.3); box-shadow: 0 0 30px currentColor; opacity: 1 !important; }
+        .right-side { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+        .stat-card { background: var(--bg-panel); padding: 30px; border-radius: 25px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .avg-val { font-size: 4.5rem; font-weight: 900; font-family: 'Orbitron'; color: var(--neon-green); }
+        .student-list { background: var(--bg-panel); border-radius: 25px; padding: 15px; height: 350px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-next, .btn-clear { padding: 12px; border-radius: 12px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold; width: 100%; border: 1px solid; }
+        .btn-next { background: transparent; color: var(--neon-pink); border-color: var(--neon-pink); }
+        .btn-clear { background: transparent; color: #ff4444; border-color: #ff4444; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h2 style="font-family: 'Orbitron'; color: var(--neon-cyan);">КІРУ</h2>
+        <input type="text" id="stu-name" placeholder="Атыңызды жазыңыз...">
+        <button class="btn-start" onclick="login()">КІРУ</button>
+    </div>
+
+    <div id="main-dashboard">
+        <div class="left-side">
+            <div id="user-display" style="font-size: 1.5rem; font-weight: 900; color: var(--neon-pink);">NAME</div>
+            <div class="protractor" id="protractor"><div class="needle" id="needle"></div></div>
+            <div id="msg" style="text-align: center; margin-top: 30px; color: var(--neon-cyan);">БАҒАҢЫЗДЫ ТАҢДАҢЫЗ</div>
+        </div>
+        <div class="right-side">
+            <div class="stat-card">
+                <div style="font-size: 0.7rem; color: var(--neon-cyan);">ОРТАША БАЛЛ</div>
+                <div id="avg-display" class="avg-val">0.0</div>
+            </div>
+            <div class="student-list" id="log-list"></div>
+            <button class="btn-next" onclick="resetForNext()">КЕЛЕСІ ОҚУШЫ</button>
+            <button class="btn-clear" onclick="clearData()">ТІЗІМДІ ТАЗАРТУ</button>
+        </div>
+    </div>
+
+<script>
+    let allVotes = JSON.parse(localStorage.getItem('allVotes')) || [];
+    const colors = { 1:'#f44', 2:'#f44', 3:'#f44', 4:'#fb0', 5:'#fb0', 6:'#fb0', 7:'#0ff', 8:'#0ff', 9:'#3f1', 10:'#3f1' };
+
+    function login() {
+        const name = document.getElementById('stu-name').value;
+        if (!name) return alert("Атыңызды жазыңыз!");
+        document.getElementById('user-display').innerText = name.toUpperCase();
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-dashboard').style.display = 'flex';
+        renderNodes();
+        updateStats();
+    }
+
+    function renderNodes() {
+        const container = document.getElementById('protractor');
+        for (let i = 1; i <= 10; i++) {
+            const angle = 180 + (i * 18) - 9;
+            const x = 225 + 205 * Math.cos(angle * Math.PI / 180);
+            const y = 225 + 205 * Math.sin(angle * Math.PI / 180);
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.innerText = i;
+            node.style.left = (x - 23) + 'px';
+            node.style.top = (y - 23) + 'px';
+            node.style.borderColor = colors[i];
+            node.style.color = colors[i];
+            node.onclick = () => castVote(i, node);
+            container.appendChild(node);
+        }
+    }
+
+    // Тек 1 рет баға қоюды қамтамасыз ететін функция
+    function castVote(val, el) {
+        // Егер бұрын баға қойылып қойса, функция орындалмайды
+        if (document.querySelectorAll('.node.disabled').length > 0) return;
+
+        const name = document.getElementById('user-display').innerText;
+        allVotes.push({ name, val, color: colors[val] });
+        localStorage.setItem('allVotes', JSON.stringify(allVotes));
+        
+        // Тілшені бағыттау
+        document.getElementById('needle').style.transform = `translateX(-50%) rotate(${(val * 18) - 99}deg)`;
+        
+        // Басқаннан кейін барлық түймелерді жауып тастау (disabled)
+        document.querySelectorAll('.node').forEach(n => n.classList.add('disabled'));
+        el.classList.add('selected'); // Таңдалған бағаны бөлектеу
+        
+        document.getElementById('msg').innerText = "БАҒА ҚАБЫЛДАНДЫ!";
+        updateStats();
+    }
+
+    function updateStats() {
+        const list = document.getElementById('log-list');
+        list.innerHTML = "";
+        let sum = 0;
+        [...allVotes].reverse().forEach(v => {
+            sum += v.val;
+            list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:10px; background:rgba(255,255,255,0.05); margin-bottom:5px; border-radius:10px; border-left:4px solid ${v.color}"><span>${v.name}</span><b>${v.val}</b></div>`;
+        });
+        document.getElementById('avg-display').innerText = allVotes.length > 0 ? (sum / allVotes.length).toFixed(1) : "0.0";
+    }
+
+    function clearData() {
+        if (confirm("Тізімді тазартуға сенімдісіз бе?")) {
+            localStorage.removeItem('allVotes');
+            allVotes = [];
+            updateStats();
+        }
+    }
+
+    function resetForNext() { location.reload(); }
+</script>
+</body>
+</html>
