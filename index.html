@@ -2,30 +2,45 @@
 <html lang="kk">
 <head>
     <meta charset="UTF-8">
-    <title>Бағалау Транспортирі — Realtime</title>
+    <title>Бағалау Транспортирі</title>
     <style>
-        body { background: #05060f; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        #main-dashboard { display: none; width: 95%; max-width: 1100px; gap: 25px; }
-        .node { position: absolute; width: 46px; height: 46px; border-radius: 50%; border: 2px solid; display: flex; justify-content: center; align-items: center; cursor: pointer; background: black; }
+        :root { --bg-dark: #05060f; --bg-panel: rgba(20, 22, 45, 0.8); --neon-cyan: #00f2ff; --neon-pink: #ff00ff; --neon-green: #39ff14; }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Montserrat', sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        #login-screen { text-align: center; background: var(--bg-panel); padding: 50px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.1); width: 380px; }
+        input { background: rgba(0, 0, 0, 0.5); border: 1px solid var(--neon-cyan); padding: 15px; color: white; border-radius: 12px; width: 100%; margin-bottom: 20px; }
+        .btn-start { background: var(--neon-cyan); color: #000; border: none; padding: 15px; border-radius: 12px; width: 100%; font-weight: 900; cursor: pointer; }
+        #main-dashboard { display: none; width: 95%; max-width: 1100px; gap: 25px; justify-content: center; }
+        .left-side { flex: 2; background: var(--bg-panel); border-radius: 30px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .protractor { position: relative; width: 450px; height: 225px; margin: 50px auto 20px; }
+        .node { position: absolute; width: 46px; height: 46px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid; background: rgba(0,0,0,0.6); z-index: 10; transition: 0.3s; }
         .node.disabled { opacity: 0.2; pointer-events: none; }
+        .node.selected { transform: scale(1.3); box-shadow: 0 0 30px currentColor; }
+        .right-side { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+        .stat-card { background: var(--bg-panel); padding: 30px; border-radius: 25px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .avg-val { font-size: 4.5rem; font-weight: 900; color: var(--neon-green); }
+        .student-list { background: var(--bg-panel); border-radius: 25px; padding: 15px; height: 350px; overflow-y: auto; }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <input type="text" id="stu-name" placeholder="Атыңыз...">
-        <button onclick="login()">КІРУ</button>
+        <h2 style="color: var(--neon-cyan);">КІРУ</h2>
+        <input type="text" id="stu-name" placeholder="Атыңызды жазыңыз...">
+        <button class="btn-start" onclick="login()">КІРУ</button>
     </div>
 
     <div id="main-dashboard">
         <div class="left-side">
-            <div id="user-display"></div>
-            <div id="protractor" style="position: relative; width: 450px; height: 225px;"></div>
+            <div id="user-display" style="font-size: 1.5rem; font-weight: 900; color: var(--neon-pink);">NAME</div>
+            <div class="protractor" id="protractor"></div>
         </div>
         <div class="right-side">
-            <div id="avg-display" style="font-size: 3rem;">0.0</div>
-            <div id="log-list"></div>
-            <button onclick="clearData()" style="color:red;">БАРЛЫҒЫН ТАЗАРТУ</button>
+            <div class="stat-card">
+                <div style="font-size: 0.7rem;">ОРТАША БАЛЛ</div>
+                <div id="avg-display" class="avg-val">0.0</div>
+            </div>
+            <div class="student-list" id="log-list"></div>
+            <button onclick="clearData()" style="color:red; background:transparent; border:1px solid red; padding:10px; cursor:pointer;">ТІЗІМДІ ТАЗАРТУ</button>
         </div>
     </div>
 
@@ -33,7 +48,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
         import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-database.js";
 
-        // Өз параметрлеріңізді осы жерге қойыңыз:
         const firebaseConfig = {
             apiKey: "AIzaSyDhDoUp5pY8EioJikcuEQUAvJskDQGr-e0",
             authDomain: "kkkkk-9a989.firebaseapp.com",
@@ -45,7 +59,6 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        // База сілтемесін осы жерге қосамыз:
         const db = getDatabase(app, "https://kkkkk-9a989-default-rtdb.firebaseio.com/");
         const colors = { 1:'#f44', 2:'#f44', 3:'#f44', 4:'#fb0', 5:'#fb0', 6:'#fb0', 7:'#0ff', 8:'#0ff', 9:'#3f1', 10:'#3f1' };
 
@@ -67,9 +80,11 @@
                 node.style.left = (225 + 205 * Math.cos((180 + i * 18 - 9) * Math.PI / 180) - 23) + 'px';
                 node.style.top = (225 + 205 * Math.sin((180 + i * 18 - 9) * Math.PI / 180) - 23) + 'px';
                 node.style.borderColor = colors[i];
+                node.style.color = colors[i];
                 node.onclick = () => {
                     push(ref(db, 'votes'), { name: document.getElementById('user-display').innerText, val: i, color: colors[i] });
                     document.querySelectorAll('.node').forEach(n => n.classList.add('disabled'));
+                    node.classList.add('selected');
                 };
                 container.appendChild(node);
             }
@@ -83,7 +98,7 @@
             if(data) {
                 Object.values(data).reverse().forEach(v => {
                     sum += v.val; count++;
-                    list.innerHTML += `<div style="padding:10px; border-left:4px solid ${v.color}">${v.name}: ${v.val}</div>`;
+                    list.innerHTML += `<div style="display:flex; justify-content:space-between; padding:10px; background:rgba(255,255,255,0.05); margin-bottom:5px; border-left:4px solid ${v.color}">${v.name} <b>${v.val}</b></div>`;
                 });
             }
             document.getElementById('avg-display').innerText = count > 0 ? (sum / count).toFixed(1) : "0.0";
